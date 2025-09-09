@@ -10,6 +10,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.converter.HttpMessageConversionException;
 
 import java.util.Map;
 
@@ -38,8 +39,12 @@ public class RecommendationService {
                     request,
                     Map.class
             );
+            // 바디 null 방어(있으면 유지)
+            if (resp.getBody() == null) {
+                throw new ApplicationException(AI_CALL_FAILURE);
+            }
             return resp.getBody();
-        } catch (RestClientException e) {
+        } catch (HttpMessageConversionException | RestClientException e) { // ★핵심
             throw new ApplicationException(AI_CALL_FAILURE);
         }
     }
@@ -48,10 +53,7 @@ public class RecommendationService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        Map<String, String> payload = Map.of(
-                "company", company,
-                "content", content
-        );
+        Map<String, String> payload = Map.of("company", company, "content", content);
         HttpEntity<Map<String, String>> request = new HttpEntity<>(payload, headers);
 
         try {
@@ -66,7 +68,7 @@ public class RecommendationService {
                 throw new ApplicationException(AI_CALL_FAILURE);
             }
             return body.getModifiedContent();
-        } catch (RestClientException e) {
+        } catch (HttpMessageConversionException | RestClientException e) { // ★핵심
             throw new ApplicationException(AI_CALL_FAILURE);
         }
     }

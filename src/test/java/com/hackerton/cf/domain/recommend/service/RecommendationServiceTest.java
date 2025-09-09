@@ -6,16 +6,12 @@ import com.hackerton.cf.global.error.ApplicationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
+import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.*;
 
 import java.util.Map;
 
@@ -40,6 +36,8 @@ class RecommendationServiceTest {
         ReflectionTestUtils.setField(service, "coverLetterUrl", "http://test/cover-letter");
     }
 
+    // -------------------- getRecommendation (8) --------------------
+
     @Test
     void getRecommendation_success_returnsMap() {
         ProfileResponse profile = new ProfileResponse();
@@ -56,25 +54,95 @@ class RecommendationServiceTest {
         Map<String, Object> result = service.getRecommendation(profile);
 
         assertEquals(expected, result);
-        verify(restTemplate).exchange(
-                eq("http://test/recommend"),
-                eq(HttpMethod.POST),
-                any(HttpEntity.class),
-                eq(Map.class)
-        );
+        verify(restTemplate).exchange(eq("http://test/recommend"), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class));
     }
 
     @Test
-    void getRecommendation_restClientException_throwsApplicationException() {
+    void getRecommendation_success_202Accepted_returnsBody() {
+        ProfileResponse profile = new ProfileResponse();
+        Map<String, Object> expected = Map.of("accepted", true);
+        ResponseEntity<Map> resp = new ResponseEntity<>(expected, HttpStatus.ACCEPTED);
+
+        when(restTemplate.exchange(anyString(), any(), any(), eq(Map.class))).thenReturn(resp);
+
+        Map<String, Object> result = service.getRecommendation(profile);
+        assertEquals(expected, result);
+    }
+
+    @Test
+    void getRecommendation_sendsApplicationJsonHeader() {
+        ProfileResponse profile = new ProfileResponse();
+        Map<String, Object> expected = Map.of("k", "v");
+        ResponseEntity<Map> resp = new ResponseEntity<>(expected, HttpStatus.OK);
+        ArgumentCaptor<HttpEntity<ProfileResponse>> captor = ArgumentCaptor.forClass(HttpEntity.class);
+
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(resp);
+
+        service.getRecommendation(profile);
+
+        verify(restTemplate).exchange(anyString(), eq(HttpMethod.POST), captor.capture(), eq(Map.class));
+        HttpHeaders headers = captor.getValue().getHeaders();
+        assertEquals(MediaType.APPLICATION_JSON, headers.getContentType());
+    }
+
+    @Test
+    void getRecommendation_requestBody_isSameProfileObject() {
+        ProfileResponse profile = new ProfileResponse();
+        Map<String, Object> expected = Map.of("k", "v");
+        ResponseEntity<Map> resp = new ResponseEntity<>(expected, HttpStatus.OK);
+        ArgumentCaptor<HttpEntity<ProfileResponse>> captor = ArgumentCaptor.forClass(HttpEntity.class);
+
+        when(restTemplate.exchange(anyString(), any(), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(resp);
+
+        service.getRecommendation(profile);
+
+        verify(restTemplate).exchange(anyString(), any(), captor.capture(), eq(Map.class));
+        assertSame(profile, captor.getValue().getBody());
+    }
+
+    @Test
+    void getRecommendation_http5xx_throwsApplicationException() {
         ProfileResponse profile = new ProfileResponse();
         when(restTemplate.exchange(anyString(), any(), any(), eq(Map.class)))
-                .thenThrow(new RestClientException("fail"));
+                .thenThrow(new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
 
-        ApplicationException ex = assertThrows(ApplicationException.class,
-                () -> service.getRecommendation(profile)
-        );
+        ApplicationException ex = assertThrows(ApplicationException.class, () -> service.getRecommendation(profile));
         assertEquals(AI_CALL_FAILURE, ex.getErrorCode());
     }
+
+    @Test
+    void getRecommendation_http4xx_throwsApplicationException() {
+        ProfileResponse profile = new ProfileResponse();
+        when(restTemplate.exchange(anyString(), any(), any(), eq(Map.class)))
+                .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
+
+        ApplicationException ex = assertThrows(ApplicationException.class, () -> service.getRecommendation(profile));
+        assertEquals(AI_CALL_FAILURE, ex.getErrorCode());
+    }
+
+    @Test
+    void getRecommendation_timeout_throwsApplicationException() {
+        ProfileResponse profile = new ProfileResponse();
+        when(restTemplate.exchange(anyString(), any(), any(), eq(Map.class)))
+                .thenThrow(new ResourceAccessException("timeout"));
+
+        ApplicationException ex = assertThrows(ApplicationException.class, () -> service.getRecommendation(profile));
+        assertEquals(AI_CALL_FAILURE, ex.getErrorCode());
+    }
+
+    @Test
+    void getRecommendation_conversionError_throwsApplicationException() {
+        ProfileResponse profile = new ProfileResponse();
+        when(restTemplate.exchange(anyString(), any(), any(), eq(Map.class)))
+                .thenThrow(new HttpMessageConversionException("parse"));
+
+        ApplicationException ex = assertThrows(ApplicationException.class, () -> service.getRecommendation(profile));
+        assertEquals(AI_CALL_FAILURE, ex.getErrorCode());
+    }
+
+    // -------------------- getModifiedCoverLetter (7) --------------------
 
     @Test
     void getModifiedCoverLetter_success_returnsContent() {
@@ -89,8 +157,25 @@ class RecommendationServiceTest {
         )).thenReturn(resp);
 
         String result = service.getModifiedCoverLetter("comp", "cont");
-
         assertEquals("modified", result);
+    }
+
+    @Test
+    void getModifiedCoverLetter_sendsApplicationJsonHeader_andPayload() {
+        AiCoverLetterResponse body = new AiCoverLetterResponse("ok");
+        ResponseEntity<AiCoverLetterResponse> resp = new ResponseEntity<>(body, HttpStatus.OK);
+        ArgumentCaptor<HttpEntity<Map<String, String>>> captor = ArgumentCaptor.forClass(HttpEntity.class);
+
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(AiCoverLetterResponse.class)))
+                .thenReturn(resp);
+
+        service.getModifiedCoverLetter("ACME", "BODY");
+
+        verify(restTemplate).exchange(anyString(), eq(HttpMethod.POST), captor.capture(), eq(AiCoverLetterResponse.class));
+        HttpEntity<Map<String, String>> entity = captor.getValue();
+        assertEquals(MediaType.APPLICATION_JSON, entity.getHeaders().getContentType());
+        assertEquals("ACME", entity.getBody().get("company"));
+        assertEquals("BODY", entity.getBody().get("content"));
     }
 
     @Test
@@ -100,8 +185,7 @@ class RecommendationServiceTest {
                 .thenReturn(resp);
 
         ApplicationException ex = assertThrows(ApplicationException.class,
-                () -> service.getModifiedCoverLetter("comp", "cont")
-        );
+                () -> service.getModifiedCoverLetter("comp", "cont"));
         assertEquals(AI_CALL_FAILURE, ex.getErrorCode());
     }
 
@@ -113,19 +197,47 @@ class RecommendationServiceTest {
                 .thenReturn(resp);
 
         ApplicationException ex = assertThrows(ApplicationException.class,
-                () -> service.getModifiedCoverLetter("comp", "cont")
-        );
+                () -> service.getModifiedCoverLetter("comp", "cont"));
         assertEquals(AI_CALL_FAILURE, ex.getErrorCode());
     }
 
     @Test
-    void getModifiedCoverLetter_restClientException_throwsApplicationException() {
+    void getModifiedCoverLetter_http5xx_throwsApplicationException() {
         when(restTemplate.exchange(anyString(), any(), any(), eq(AiCoverLetterResponse.class)))
-                .thenThrow(new RestClientException("fail"));
+                .thenThrow(new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE));
 
         ApplicationException ex = assertThrows(ApplicationException.class,
-                () -> service.getModifiedCoverLetter("comp", "cont")
-        );
+                () -> service.getModifiedCoverLetter("comp", "cont"));
+        assertEquals(AI_CALL_FAILURE, ex.getErrorCode());
+    }
+
+    @Test
+    void getModifiedCoverLetter_http4xx_throwsApplicationException() {
+        when(restTemplate.exchange(anyString(), any(), any(), eq(AiCoverLetterResponse.class)))
+                .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
+
+        ApplicationException ex = assertThrows(ApplicationException.class,
+                () -> service.getModifiedCoverLetter("comp", "cont"));
+        assertEquals(AI_CALL_FAILURE, ex.getErrorCode());
+    }
+
+    @Test
+    void getModifiedCoverLetter_timeout_throwsApplicationException() {
+        when(restTemplate.exchange(anyString(), any(), any(), eq(AiCoverLetterResponse.class)))
+                .thenThrow(new ResourceAccessException("timeout"));
+
+        ApplicationException ex = assertThrows(ApplicationException.class,
+                () -> service.getModifiedCoverLetter("comp", "cont"));
+        assertEquals(AI_CALL_FAILURE, ex.getErrorCode());
+    }
+
+    @Test
+    void getModifiedCoverLetter_conversionError_throwsApplicationException() {
+        when(restTemplate.exchange(anyString(), any(), any(), eq(AiCoverLetterResponse.class)))
+                .thenThrow(new HttpMessageConversionException("parse"));
+
+        ApplicationException ex = assertThrows(ApplicationException.class,
+                () -> service.getModifiedCoverLetter("comp", "cont"));
         assertEquals(AI_CALL_FAILURE, ex.getErrorCode());
     }
 }
