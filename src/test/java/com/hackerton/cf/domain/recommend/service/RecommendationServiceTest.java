@@ -29,6 +29,7 @@ class RecommendationServiceTest {
     @InjectMocks
     private RecommendationService service;
 
+
     @BeforeEach
     void setUp() {
         // @Value 필드 주입
