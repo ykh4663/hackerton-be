@@ -15,8 +15,8 @@ import java.util.List;
 @AllArgsConstructor
 public class ProfileResponse {
 
-    @Schema(description = "기본 프로필 정보", implementation = ProfileBasicDto.class)
-    private ProfileBasicDto basic;
+    @Schema(description = "기본 프로필 정보", implementation = ProfileDto.class)
+    private ProfileDto basic;
     @Schema(description = "선택된 능력 코드 리스트", example = "[1,5,7]")
     private List<Integer> abilities;
     @Schema(description = "경력 상태 (\"신입\" 또는 \"경력\")", example = "신입")

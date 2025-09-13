@@ -68,7 +68,7 @@ public class OauthService {
             if (user.getProfile() == null) {
                 return new OauthLoginResponse(RoleStatus.REGISTER.getStatus(), accessToken, refreshToken);
             } else {
-                // ✅ 프로필이 등록되었으면 COMPLETE로 전환
+
                 user.setRole(RoleStatus.COMPLETE.getStatus());
                 userRepository.save(user);
                 return new OauthLoginResponse(RoleStatus.COMPLETE.getStatus(), accessToken, refreshToken);
@@ -88,7 +88,7 @@ public class OauthService {
         String refreshToken = token.refreshToken();
         refreshTokenService.saveRefreshToken(userId, refreshToken);
 
-        return new OauthLoginResponse(RoleStatus.NONE.getStatus(), accessToken, refreshToken); // ✅ 정확한 Role 반환
+        return new OauthLoginResponse(RoleStatus.NONE.getStatus(), accessToken, refreshToken);
     }
 
 }

@@ -10,14 +10,20 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.RequestMatcher;
-import org.springframework.security.web.util.matcher.RequestMatchers;
+
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
-import java.util.Collections;
 
-import static org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher;
+
+import org.springframework.http.HttpMethod;
+
+import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher;
+
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -26,45 +32,55 @@ public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
 
+
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http.csrf(AbstractHttpConfigurer::disable)
-                .cors(corsConfigurer -> corsConfigurer.configurationSource(corsConfigurationSource()))
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .sessionManagement(
-                        configurer -> configurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(registry -> registry
-                        .requestMatchers(getMatcherForUser())
-                        .permitAll()
-                        .requestMatchers(getMatcherForAnyone())
-                        .permitAll()
-                        .anyRequest()
-                        .authenticated())
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                .build();
+    MvcRequestMatcher.Builder mvc(HandlerMappingIntrospector introspector) {
+        return new MvcRequestMatcher.Builder(introspector);
     }
 
-    private CorsConfigurationSource corsConfigurationSource() {
-        return request -> {
-            CorsConfiguration config = new CorsConfiguration();
-            config.setAllowedHeaders(Collections.singletonList("*"));
-            config.setAllowedMethods(Collections.singletonList("*"));
-            config.setAllowedOriginPatterns(Collections.singletonList("*"));
-            return config;
-        };
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, MvcRequestMatcher.Builder mvc) throws Exception {
+        // 화이트리스트를 MvcRequestMatcher 배열로 변환
+        MvcRequestMatcher[] permitAll = SecurityUrls.AUTH_WHITELIST.stream()
+                .map(mvc::pattern)
+                .toArray(MvcRequestMatcher[]::new);
+
+        http
+                // CORS
+                .cors(c -> c.configurationSource(corsConfigurationSource()))
+                // CSRF/Form/Logout 비활성
+                .csrf(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
+                // 세션 미사용
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // 인가 규칙
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(permitAll).permitAll()                                   // 화이트리스트
+                        .requestMatchers(mvc.pattern(HttpMethod.OPTIONS, "/**")).permitAll()      // 프리플라이트
+                        .anyRequest().authenticated()                                             // 나머지는 인증 필요
+                )
+                // JWT 필터(UsernamePasswordAuthenticationFilter 앞에 둠)
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
+
+
+        return http.build();
     }
 
-    private RequestMatcher getMatcherForAnyone() {
-        return RequestMatchers.anyOf(antMatcher("/api/login/**"), antMatcher("/api/**"),
-                antMatcher("/swagger-ui/**"),
-                antMatcher("/v3/api-docs/**"), antMatcher("/swagger-ui.html"));
+    /** CORS 설정 (패턴 기반 허용 오리진) */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration conf = new CorsConfiguration();
+        conf.setAllowedOriginPatterns(SecurityUrls.ALLOWED_ORIGINS);
+        conf.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
+        conf.setAllowedHeaders(List.of("*"));
+        conf.setAllowCredentials(true);
+        conf.setMaxAge(3600L);
+
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", conf);
+        return source;
     }
-
-    private RequestMatcher getMatcherForUser() {
-        return RequestMatchers.anyOf(
-                antMatcher("/user") //TODO: 임시이며 추후 url에 따라 수정해야.
-        );
-    }
-
-
 }

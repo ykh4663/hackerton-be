@@ -14,7 +14,7 @@ public class Ability {
 
     private Integer code; // ex: 0 ~ 10
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "profile_id")
     private Profile profile;
 }

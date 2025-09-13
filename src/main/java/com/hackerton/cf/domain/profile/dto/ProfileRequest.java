@@ -17,9 +17,9 @@ public class ProfileRequest {
     @Schema(description = "변경할 닉네임", example = "johndoe", nullable = true)
     private String nickname;
 
-    @Schema(description = "기본 프로필 정보", implementation = ProfileBasicDto.class)
+    @Schema(description = "기본 프로필 정보", implementation = ProfileDto.class)
     @NotNull(message = "basic 정보는 필수입니다.")
-    private ProfileBasicDto basic;
+    private ProfileDto basic;
 
     @Schema(description = "경력 코드 (0=신입, 1=경력)", example = "0")
     @NotNull(message = "careerCode는 필수입니다.")

@@ -30,10 +30,13 @@ dependencies {
 
 	//data jpa 의존성
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	runtimeOnly 'com.mysql:mysql-connector-j'
 
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+
+
 	compileOnly 'org.projectlombok:lombok'
 	//h2 db(테스트환경에서 사용)
 	runtimeOnly 'com.h2database:h2'
@@ -42,17 +45,6 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
-	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation 'org.springframework.security:spring-security-test'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
-
-
-
-
-
 
 
 
@@ -64,8 +56,8 @@ dependencies {
 
 }
 
-jar {
-	enabled = false
+tasks.withType(JavaCompile).configureEach {
+	options.compilerArgs.add("-parameters")
 }
 
 tasks.named('test') {

@@ -11,7 +11,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProfileBasicDto {
+public class ProfileDto {
     @Schema(description = "학년", example = "0:4학년, 1:2,3학년")
     private Integer universityYear;
     @Schema(description = "전공명", example = "컴퓨터공학과")

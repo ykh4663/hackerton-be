@@ -6,7 +6,7 @@ import com.hackerton.cf.domain.profile.domain.Ability;
 import com.hackerton.cf.domain.profile.domain.CareerStatus;
 import com.hackerton.cf.domain.profile.domain.Profile;
 import com.hackerton.cf.domain.profile.domain.ProfileBasic;
-import com.hackerton.cf.domain.profile.dto.ProfileBasicDto;
+import com.hackerton.cf.domain.profile.dto.ProfileDto;
 import com.hackerton.cf.domain.profile.dto.ProfileRequest;
 import com.hackerton.cf.domain.profile.dto.ProfileResponse;
 import com.hackerton.cf.domain.user.dao.UserRepository;
@@ -21,7 +21,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
@@ -139,7 +138,7 @@ class ProfileServiceTest {
     @DisplayName("upsertProfile")
     class UpsertProfile {
 
-        private ProfileRequest req(Integer careerCode, List<Integer> abilities, ProfileBasicDto basic, String nickname) {
+        private ProfileRequest req(Integer careerCode, List<Integer> abilities, ProfileDto basic, String nickname) {
             ProfileRequest r = new ProfileRequest();
             r.setCareerCode(careerCode);
             r.setAbilities(abilities);
@@ -156,7 +155,7 @@ class ProfileServiceTest {
             given(mockUser.getProfile()).willReturn(null);
             given(mockUser.getRole()).willReturn(RoleStatus.REGISTER.getStatus());
 
-            ProfileBasicDto b = new ProfileBasicDto(2024, "EE", "certB", "KOR", "awardB", "expB");
+            ProfileDto b = new ProfileDto(2024, "EE", "certB", "KOR", "awardB", "expB");
             ProfileRequest r = req(0, List.of(3,4), b, "neo");
 
             ArgumentCaptor<Profile> cap = ArgumentCaptor.forClass(Profile.class);
@@ -185,7 +184,7 @@ class ProfileServiceTest {
             given(mockUser.getProfile()).willReturn(existing);
             given(mockUser.getRole()).willReturn(RoleStatus.COMPLETE.getStatus());
 
-            ProfileBasicDto b = new ProfileBasicDto(4, "ME", "c2","l2","w2","new exp");
+            ProfileDto b = new ProfileDto(4, "ME", "c2","l2","w2","new exp");
             ProfileRequest r = req(1, List.of(30), b, null);
 
             ArgumentCaptor<Profile> cap = ArgumentCaptor.forClass(Profile.class);
@@ -208,7 +207,7 @@ class ProfileServiceTest {
             given(mockUser.getProfile()).willReturn(existing);
             // getRole() 스텁 불필요 (예외 없음이어도 검증 대상 아님)
 
-            ProfileRequest r = req(1, List.of(), new ProfileBasicDto(3,"CSE","c","l","w","e"), null);
+            ProfileRequest r = req(1, List.of(), new ProfileDto(3,"CSE","c","l","w","e"), null);
 
             ArgumentCaptor<Profile> cap = ArgumentCaptor.forClass(Profile.class);
             sut.upsertProfile(USER_ID, r);
@@ -227,7 +226,7 @@ class ProfileServiceTest {
             given(mockUser.getProfile()).willReturn(existing);
             // getRole() 스텁 불필요 (예외가 먼저 발생)
 
-            ProfileRequest r = req(99, List.of(1), new ProfileBasicDto(3,"CSE","c","l","w","e"), null);
+            ProfileRequest r = req(99, List.of(1), new ProfileDto(3,"CSE","c","l","w","e"), null);
 
             Throwable t = catchThrowable(() -> sut.upsertProfile(USER_ID, r));
             assertThat(t).isInstanceOf(ApplicationException.class);
@@ -245,7 +244,7 @@ class ProfileServiceTest {
             given(mockUser.getProfile()).willReturn(existing);
             // getRole() 스텁 불필요 (NPE가 먼저 발생)
 
-            ProfileRequest r = req(null, List.of(), new ProfileBasicDto(3,"CSE","c","l","w","e"), null);
+            ProfileRequest r = req(null, List.of(), new ProfileDto(3,"CSE","c","l","w","e"), null);
 
             assertThrows(NullPointerException.class, () -> sut.upsertProfile(USER_ID, r));
         }
@@ -274,7 +273,7 @@ class ProfileServiceTest {
             given(mockUser.getProfile()).willReturn(existing);
             // getRole() 스텁 불필요 (NPE가 먼저 발생)
 
-            ProfileRequest r = req(0, null, new ProfileBasicDto(3,"CSE","c","l","w","e"), null);
+            ProfileRequest r = req(0, null, new ProfileDto(3,"CSE","c","l","w","e"), null);
 
             assertThrows(NullPointerException.class, () -> sut.upsertProfile(USER_ID, r));
         }
@@ -288,7 +287,7 @@ class ProfileServiceTest {
             given(userService.getUserById(USER_ID)).willReturn(mockUser);
             given(mockUser.getProfile()).willReturn(existing);
 
-            ProfileRequest r = req(0, List.of(), new ProfileBasicDto(3,"CSE","c","l","w","e"), null);
+            ProfileRequest r = req(0, List.of(), new ProfileDto(3,"CSE","c","l","w","e"), null);
 
             sut.upsertProfile(USER_ID, r);
 
@@ -305,10 +304,10 @@ class ProfileServiceTest {
             ProfileResponse base = new ProfileResponse();
             base.setAbilities(List.of(1, 2));
             base.setCareerCode("신입");
-            base.setBasic(new ProfileBasicDto(2, "EE", "cert1", "L1", "W1", "base exp"));
+            base.setBasic(new ProfileDto(2, "EE", "cert1", "L1", "W1", "base exp"));
             return base;
         }
-        private ProfileRequest ov(Integer code, List<Integer> abilities, ProfileBasicDto b) {
+        private ProfileRequest ov(Integer code, List<Integer> abilities, ProfileDto b) {
             ProfileRequest r = new ProfileRequest();
             r.setCareerCode(code);
             r.setAbilities(abilities);
@@ -354,7 +353,7 @@ class ProfileServiceTest {
 
         @Test @DisplayName("basic 일부 필드만 override → 지정 필드만 교체, 나머지 base 유지")
         void basic_partial_override() {
-            ProfileBasicDto ob = new ProfileBasicDto(null, "CSE", null, null, null, null);
+            ProfileDto ob = new ProfileDto(null, "CSE", null, null, null, null);
             ProfileResponse res = sut.mergeProfile(baseResp(), ov(null, null, ob));
             assertThat(res.getBasic().getDepartment()).isEqualTo("CSE");
             assertThat(res.getBasic().getUniversityYear()).isEqualTo(2); // base 유지
@@ -375,7 +374,7 @@ class ProfileServiceTest {
             base.setCareerCode("신입");
             base.setBasic(null);
 
-            ProfileBasicDto ob = new ProfileBasicDto(null, "CSE", null, null, null, null);
+            ProfileDto ob = new ProfileDto(null, "CSE", null, null, null, null);
             assertThrows(NullPointerException.class, () -> sut.mergeProfile(base, ov(null, null, ob)));
         }
     }

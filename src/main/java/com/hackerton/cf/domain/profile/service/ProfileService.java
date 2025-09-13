@@ -4,7 +4,7 @@ import com.hackerton.cf.domain.auth.dto.RoleStatus;
 import com.hackerton.cf.domain.profile.dao.ProfileRepository;
 
 import com.hackerton.cf.domain.profile.domain.*;
-import com.hackerton.cf.domain.profile.dto.ProfileBasicDto;
+import com.hackerton.cf.domain.profile.dto.ProfileDto;
 import com.hackerton.cf.domain.profile.dto.ProfileRequest;
 import com.hackerton.cf.domain.profile.dto.ProfileResponse;
 import com.hackerton.cf.domain.user.dao.UserRepository;
@@ -13,6 +13,8 @@ import com.hackerton.cf.domain.user.service.UserService;
 import com.hackerton.cf.global.error.ApplicationException;
 import com.hackerton.cf.global.error.ProfileErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,7 +45,7 @@ public class ProfileService {
 
 
         ProfileBasic profileBasic = p.getProfileBasic();
-        ProfileBasicDto basicDto = new ProfileBasicDto(
+        ProfileDto basicDto = new ProfileDto(
                 profileBasic.getUniversityYear(),
                 profileBasic.getDepartment(),
                 profileBasic.getCertifications(),
@@ -79,7 +81,7 @@ public class ProfileService {
                 });
 
         // 기본 정보 업데이트
-        ProfileBasicDto b = req.getBasic();
+        ProfileDto b = req.getBasic();
         ProfileBasic basic = ProfileBasic.builder()
                 .department(b.getDepartment())
                 .universityYear(b.getUniversityYear())
@@ -137,13 +139,13 @@ public class ProfileService {
                         : base.getCareerCode()
         );
 
-        ProfileBasicDto baseBasic = base.getBasic();
-        ProfileBasicDto overrideBasic = override.getBasic();
+        ProfileDto baseBasic = base.getBasic();
+        ProfileDto overrideBasic = override.getBasic();
 
         result.setBasic(
                 overrideBasic != null &&
                         (overrideBasic.getUniversityYear() != null || overrideBasic.getDepartment() != null)
-                        ? new ProfileBasicDto(
+                        ? new ProfileDto(
                         overrideBasic.getUniversityYear() != null ? overrideBasic.getUniversityYear() : baseBasic.getUniversityYear(),
                         overrideBasic.getDepartment() != null ? overrideBasic.getDepartment() : baseBasic.getDepartment(),
                         overrideBasic.getCertifications() != null ? overrideBasic.getCertifications() : baseBasic.getCertifications(),
@@ -156,4 +158,8 @@ public class ProfileService {
 
         return result;
     }
+
+
+
+
 }

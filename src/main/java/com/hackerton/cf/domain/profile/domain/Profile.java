@@ -31,7 +31,7 @@ public class Profile extends BaseEntity {
     @Embedded
     private ProfileBasic profileBasic;
 
-    /** 능력 선택(0~10 중 하나) */
+    /** 능력 선택(0~10) */
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Ability> abilities = new ArrayList<>();

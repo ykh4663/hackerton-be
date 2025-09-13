@@ -1,5 +1,6 @@
 package com.hackerton.cf.global.common.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,14 +14,19 @@ import java.util.Map;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Schema(name = "CommonResponse", description = "성공 응답 래퍼")
 public class CommonResponse<T> {
+
 
     private static final String SUCCESS_STATUS = "success";
     private static final String FAIL_STATUS = "fail";
     private static final String ERROR_STATUS = "error";
 
+    @Schema(description = "성공 여부", example = "success")
     private String status;
+    @Schema(description = "성공 메시지", example = "OK", nullable = true)
     private String message;
+    @Schema(description = "실제 데이터", nullable = true)
     private T data;
 
     private CommonResponse(String status, T data, String message) {
